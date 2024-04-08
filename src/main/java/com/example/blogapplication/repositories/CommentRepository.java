@@ -1,17 +1,16 @@
 package com.example.blogapplication.repositories;
 
-import com.example.blogapplication.models.Post;
+import com.example.blogapplication.models.Comment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface PostRepository extends JpaRepository<Post, Long> {
-    Post save(Post post);
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+    Comment save(Comment comment);
 
-    List<Post> findByCategoryId(Long categoryId);
-
+    List<Comment> findByPostId(long postId);
 
 
 }

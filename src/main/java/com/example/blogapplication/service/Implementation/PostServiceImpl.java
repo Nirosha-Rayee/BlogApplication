@@ -2,9 +2,13 @@ package com.example.blogapplication.service.Implementation;
 
 import com.example.blogapplication.dtos.PostDto;
 import com.example.blogapplication.dtos.PostPageResponse;
+import com.example.blogapplication.exception.ResourceNotFoundException;
+import com.example.blogapplication.models.Category;
 import com.example.blogapplication.models.Post;
+import com.example.blogapplication.repositories.CategoryRepository;
 import com.example.blogapplication.repositories.PostRepository;
 import com.example.blogapplication.service.PostServiceInterface;
+import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,16 +22,28 @@ import java.util.stream.Collectors;
 public class PostServiceImpl implements PostServiceInterface {
 
     private PostRepository postRepository;
+    private ModelMapper mapper;
 
-    public PostServiceImpl(PostRepository postRepository) {
+    private CategoryRepository categoryRepository;
+
+    public PostServiceImpl(PostRepository postRepository, ModelMapper mapper, CategoryRepository categoryRepository) {
         this.postRepository = postRepository;
+        this.mapper = mapper;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
     public PostDto createPost(PostDto postDto) {
 
+        Category category = categoryRepository.findById(postDto.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", postDto.getCategoryId()));
+
+
+
         //1. convert Dto (postDto) into entity (Post)
         Post post = mapToEntity(postDto);
+
+        post.setCategory(category);
 
 //        Post post = new Post();
 //        post.setTitle(postDto.getTitle());
@@ -114,10 +130,15 @@ public class PostServiceImpl implements PostServiceInterface {
         //get the post by id from the database using the repository
         Post post = postRepository.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
 
+        Category category = categoryRepository.findById(postDto.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", postDto.getCategoryId()));
+
+
         //update the post with the new values from the Dto
         post.setTitle(postDto.getTitle());
         post.setDescription(postDto.getDescription());
         post.setContent(postDto.getContent());
+        post.setCategory(category);
 
         //save the updated post into the database using the repository
         Post updatedPost = postRepository.save(post);
@@ -136,24 +157,40 @@ public class PostServiceImpl implements PostServiceInterface {
         postRepository.delete(post);
     }
 
+    @Override
+    public List<PostDto> getPostsByCategoryId(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
+
+        List<Post> posts = postRepository.findByCategoryId(categoryId);
+
+        return posts.stream().map((post) -> mapToDto(post))
+                .collect(Collectors.toList());
+    }
+
     //  create a method that will convert the entity (Post) into Dto (PostDto) as a Private method
 
     private PostDto mapToDto(Post post) {
-        PostDto postDto = new PostDto();
-        postDto.setId(post.getId());
-        postDto.setTitle(post.getTitle());
-        postDto.setDescription(post.getDescription());
-        postDto.setContent(post.getContent());
+
+        PostDto postDto = mapper.map(post, PostDto.class);
+//        PostDto postDto = new PostDto();
+//        postDto.setId(post.getId());
+//        postDto.setTitle(post.getTitle());
+//        postDto.setDescription(post.getDescription());
+//        postDto.setContent(post.getContent());
         return postDto;
     }
 
     //  create a method that will convert the Dto (PostDto) into entity (Post) as a Private method
 
     private Post mapToEntity(PostDto postDto) {
-        Post post = new Post();
-        post.setTitle(postDto.getTitle());
-        post.setDescription(postDto.getDescription());
-        post.setContent(postDto.getContent());
+
+
+        Post post = mapper.map(postDto, Post.class);
+//        Post post = new Post();
+//        post.setTitle(postDto.getTitle());
+//        post.setDescription(postDto.getDescription());
+//        post.setContent(postDto.getContent());
         return post;
     }
 
